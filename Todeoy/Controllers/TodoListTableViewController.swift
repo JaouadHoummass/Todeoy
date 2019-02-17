@@ -11,22 +11,31 @@ import UIKit
 class TodoListTableViewController: UITableViewController {
     
     let saveData = UserDefaults.standard
+
     
-    var itemArray = ["Find Mike", "Buy Eggos","Destroy Demogorgon"]
+    var itemArray : [Item] = []
+    var dataArray : [Data] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
+    
         
-        if let items = saveData.array(forKey: "TodoListItems") as? [String] {
+        dataArray = (saveData.array(forKey: "ItemsList") as? [Data])!
+       
+        
+        if let recoverDataArray  = saveData.array(forKey: "ItemsList") as? [Data] {
             
-         itemArray = items
+            for data in recoverDataArray {
+                
+            let item = NSKeyedUnarchiver.unarchiveObject(with: data) as! Item
             
-         print("Active")
+            itemArray.append(item)
+
+          }
     }
         
     }
 
-   
 
     // MARK: - Table view data source
 
@@ -40,9 +49,20 @@ class TodoListTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "TodoCell", for: indexPath)
+        
 
         // Configure the cell...
-        cell.textLabel?.text = itemArray[indexPath.row]
+        cell.textLabel?.text = itemArray[indexPath.row].title
+        
+        if itemArray[indexPath.row].checked == false {
+            
+        cell.accessoryType = .none
+            
+        } else {
+            
+          cell.accessoryType = .checkmark
+            
+        }
 
         return cell
     }
@@ -53,12 +73,20 @@ class TodoListTableViewController: UITableViewController {
         if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
           
         tableView.cellForRow(at: indexPath)?.accessoryType = .none
-    
+        itemArray[indexPath.row].checked = false
+        let encodedData = NSKeyedArchiver.archivedData(withRootObject: itemArray[indexPath.row])
+        dataArray[indexPath.row] = encodedData
+        self.saveData.set(self.dataArray, forKey: "ItemsList")
+        self.saveData.synchronize()
             
         } else {
             
            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-          
+           itemArray[indexPath.row].checked = true
+           let encodedData = NSKeyedArchiver.archivedData(withRootObject: itemArray[indexPath.row])
+           dataArray[indexPath.row] = encodedData
+           self.saveData.set(self.dataArray, forKey: "ItemsList")
+           self.saveData.synchronize()
         }
         
        tableView.deselectRow(at: indexPath, animated: true)
@@ -68,16 +96,21 @@ class TodoListTableViewController: UITableViewController {
    
     @IBAction func addItem(_ sender: UIBarButtonItem) {
         
-        //creer un pointeur qui va pointer sur le alertTextField pour recuperer la valeur du text
+        //creer un pointeur qui va pointer sur le alertTextField pour recuperer la valeur du text de ce dernier
         var textField = UITextField()
         
         let alert = UIAlertController(title: "Add a New Item", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             
-            self.itemArray.append(textField.text!)
+            let newItem = Item(t:textField.text!, d:false )
             
-            self.saveData.set(self.itemArray, forKey: "TodoListItems")
+            self.itemArray.append(newItem)
+            
+            let encodedData = NSKeyedArchiver.archivedData(withRootObject: newItem)
+            self.dataArray.append(encodedData)
+            self.saveData.set(self.dataArray, forKey: "ItemsList")
+            self.saveData.synchronize()
             
             self.tableView.reloadData()
             
